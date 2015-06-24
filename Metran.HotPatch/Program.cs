@@ -1,7 +1,4 @@
-﻿using System.Linq;
-using System.Text;
-
-namespace Metran.HotPatch
+﻿namespace Metran.HotPatch
 {
     using Metran.LowLevelAccess;
     using Metran.LowLevelAccess.UnmanagedMemory;
@@ -11,7 +8,9 @@ namespace Metran.HotPatch
     using System.Diagnostics;
     using System.Globalization;
     using System.IO;
+    using System.Linq;
     using System.Runtime.InteropServices;
+    using System.Text;
     using System.Windows.Forms;
     using System.Xml.Linq;
 
@@ -100,8 +99,7 @@ namespace Metran.HotPatch
                     throw new InvalidOperationException("The target name attribute is not found");
                 }
 
-                var startupInfo = new StartupInfo();
-                startupInfo.cb = (uint)Marshal.SizeOf(typeof(StartupInfo));
+                var startupInfo = new StartupInfo {cb = (uint) Marshal.SizeOf(typeof (StartupInfo))};
 
                 ProcessInformation processInformation;
                 var result = Kernel32.CreateProcess(
@@ -149,9 +147,9 @@ namespace Metran.HotPatch
                     ListModulesFlag.LIST_MODULES_ALL);
                 ValidateResult(result);
 
-                for (var i = 0; i < needed / IntPtr.Size; i++)
+                for (var i = 0; i < needed/IntPtr.Size; i++)
                 {
-                    var hModule = Marshal.ReadIntPtr(alloc.BufferAddress, i * IntPtr.Size);
+                    var hModule = Marshal.ReadIntPtr(alloc.BufferAddress, i*IntPtr.Size);
 
                     var baseName = new StringBuilder(260);
                     result = Kernel32.GetModuleFileNameExWPsapi(hProcess, hModule, baseName, baseName.Capacity);
@@ -197,7 +195,7 @@ namespace Metran.HotPatch
                 var result = Kernel32.VirtualProtectEx(
                     processInformation.hProcess,
                     address,
-                    (uint)data.Length,
+                    (uint) data.Length,
                     MemoryProtection.ExcecuteReadWrite,
                     out oldProtect);
                 ValidateResult(result);
@@ -211,7 +209,7 @@ namespace Metran.HotPatch
                         processInformation.hProcess,
                         address,
                         alloc.BufferAddress,
-                        (uint)alloc.BufferLength,
+                        (uint) alloc.BufferLength,
                         out mumberOfBytesWritten);
                     ValidateResult(result);
                 }
@@ -219,7 +217,7 @@ namespace Metran.HotPatch
                 result = Kernel32.VirtualProtectEx(
                     processInformation.hProcess,
                     address,
-                    (uint)data.Length,
+                    (uint) data.Length,
                     oldProtect,
                     out oldProtect);
                 ValidateResult(result);
@@ -256,13 +254,13 @@ namespace Metran.HotPatch
                 var offset = ParseAddress(offsetAttr.Value);
                 var data = ParseData(dataAttr.Value);
 
-                var libraryHandle = GetLibraryAddress(libraryNameAttr.Value, (int)processInformation.dwProcessId);
+                var libraryHandle = GetLibraryAddress(libraryNameAttr.Value, (int) processInformation.dwProcessId);
 
                 MemoryProtection oldProtect;
                 var result = Kernel32.VirtualProtectEx(
                     processInformation.hProcess,
-                    libraryHandle + (int)offset,
-                    (uint)data.Length,
+                    libraryHandle + (int) offset,
+                    (uint) data.Length,
                     MemoryProtection.ExcecuteReadWrite,
                     out oldProtect);
                 ValidateResult(result);
@@ -274,17 +272,17 @@ namespace Metran.HotPatch
                     uint mumberOfBytesWritten;
                     result = Kernel32.WriteProcessMemory(
                         processInformation.hProcess,
-                        libraryHandle + (int)offset,
+                        libraryHandle + (int) offset,
                         alloc.BufferAddress,
-                        (uint)alloc.BufferLength,
+                        (uint) alloc.BufferLength,
                         out mumberOfBytesWritten);
                     ValidateResult(result);
                 }
 
                 result = Kernel32.VirtualProtectEx(
                     processInformation.hProcess,
-                    libraryHandle + (int)offset,
-                    (uint)data.Length,
+                    libraryHandle + (int) offset,
+                    (uint) data.Length,
                     oldProtect,
                     out oldProtect);
                 ValidateResult(result);
@@ -299,6 +297,8 @@ namespace Metran.HotPatch
         /// <returns>A library handle corresponding to the specified library name</returns>
         private static IntPtr GetLibraryAddress(string libraryName, int processId)
         {
+            if (libraryName == null) throw new ArgumentNullException("libraryName");
+
             IntPtr libraryHandle;
 
             var libraryNameTrimmed = Path.GetFileNameWithoutExtension(libraryName).ToLower();
@@ -333,15 +333,16 @@ namespace Metran.HotPatch
 
             var scanAddress = IntPtr.Zero;
             MemoryBasicInformation mbi;
-            var size = Marshal.SizeOf(typeof(MemoryBasicInformation));
+            var size = Marshal.SizeOf(typeof (MemoryBasicInformation));
 
-            Kernel32.VirtualQueryEx(processInformation.hProcess, scanAddress, out mbi, (uint)size);
+            Kernel32.VirtualQueryEx(processInformation.hProcess, scanAddress, out mbi, (uint) size);
             if (Marshal.GetLastWin32Error() == 24)
             {
                 MemoryBasicInformation64 mbi64;
-                size = Marshal.SizeOf(typeof(MemoryBasicInformation64));
+                size = Marshal.SizeOf(typeof (MemoryBasicInformation64));
 
-                while (Kernel32.VirtualQueryEx64(processInformation.hProcess, scanAddress, out mbi64, (uint)size) == size)
+                while (Kernel32.VirtualQueryEx64(processInformation.hProcess, scanAddress, out mbi64, (uint) size) ==
+                       size)
                 {
                     if (mbi64.Type == MemoryBasicInformationType.MemImage)
                     {
@@ -354,7 +355,7 @@ namespace Metran.HotPatch
             }
             else
             {
-                while (Kernel32.VirtualQueryEx(processInformation.hProcess, scanAddress, out mbi, (uint)size) == size)
+                while (Kernel32.VirtualQueryEx(processInformation.hProcess, scanAddress, out mbi, (uint) size) == size)
                 {
                     if (mbi.Type == MemoryBasicInformationType.MemImage)
                     {
@@ -379,18 +380,18 @@ namespace Metran.HotPatch
             try
             {
                 var address = int.Parse(
-                        addressValue,
-                        NumberStyles.HexNumber,
-                        new CultureInfo("en-US"));
+                    addressValue,
+                    NumberStyles.HexNumber,
+                    new CultureInfo("en-US"));
 
                 return new IntPtr(address);
             }
             catch (OverflowException)
             {
                 var address = long.Parse(
-                        addressValue,
-                        NumberStyles.HexNumber,
-                        new CultureInfo("en-US"));
+                    addressValue,
+                    NumberStyles.HexNumber,
+                    new CultureInfo("en-US"));
 
                 return new IntPtr(address);
             }
